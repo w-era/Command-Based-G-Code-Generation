@@ -521,13 +521,13 @@ class toolPath{
             
         }
 
-        void disk(coordinate relativeCenter, number depth, number gap, number speed = -1){
+        void disk(coordinate origin, coordinate relativeCenter, number depth, number gap, number speed = -1){
             number x = relativeCenter.x;
             number y = relativeCenter.y;
             coordinate toolOffset = relativeCenter * this->toolRadius / magnitude(relativeCenter);
             coordinate gapOffset = relativeCenter * gap / magnitude(relativeCenter);
             relativeCenter -= toolOffset;
-            this->go(this->current.x+toolOffset.x,this->current.y+toolOffset.y);
+            this->go(origin.x+toolOffset.x,origin.y+toolOffset.y);
             this->drill(depth);
             this->circularArc(relativeCenter);
             this->drill(this->top);
@@ -541,16 +541,40 @@ class toolPath{
             }
         }
 
+        void scan(number x1, number y1, number xWidth, number yWidth, number depth, double angle, number gap, number speed = -1){
+            coordinate toolOffset = {this->toolRadius*sqrt(2)*cos(angle+pi/4),this->toolRadius*sqrt(2)*sin(angle+pi/4),0};
+            coordinate originOffset = {toolOffset.x+x1,toolOffset.y+y1,0};
+            coordinate gapOffset = {gap*sin(angle)*-1,gap*cos(angle),0};
+            coordinate xOffset = {(xWidth-2*this->toolRadius)*cos(angle),(xWidth-2*this->toolRadius)*sin(angle),0};
+            coordinate yOffset = {(yWidth-2*this->toolRadius)*sin(angle)*-1,(yWidth-2*this->toolRadius)*cos(angle),0};
+            int pass = to_double(yWidth-2*this->toolRadius)/to_double(gap);
+            int i = 0;
+            this->go(originOffset.x,originOffset.y);
+            this->drill(depth);
+            for (;i<pass;++i){
+                if (i!=0) this->line(gapOffset);
+                if (i%2==0){
+                    this->line(xOffset);
+                } else{
+                    this->line(-xOffset);
+                }
+                yOffset -= gapOffset;
+            }
+            this->line(yOffset);
+            if (i%2==0){
+                this->line(xOffset);
+            } else{
+                this->line(-xOffset);
+            }
+            this->drill(this->top);
+        }
+
 };
 
 int main(){
     toolPath test("test",6,"nc",8000,200,800);
     test.go(0,0);
-    test.slot(0,0,30,45,0,0,1);
-    test.go(0,0);
-    test.disk({20,0,0},-2,2);
-    test.disk({0,103,0},-3,2.5);
-    test.disk({-50,-75,0},-5,1);
+    test.scan(1,2,10,10,0,3*pi/2,1);
     test.output();
     return 0;
 }
